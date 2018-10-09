@@ -9,7 +9,8 @@ output: github_document
 ```{r}
 library(tidyverse)
 library(ggplot2)
-library(p8105.datasets)
+library(p8105.datasets) 
+library(knitr)
 ```
 #Problem 1
 This problem uses the BRFSS data. DO NOT include this dataset in your local data directory; instead, load the data from the  p8105.datasets package.
@@ -33,6 +34,55 @@ brfss_smart2010 <- brfss_smart2010 %>%
   filter(topic == "Overall Health") %>%
   mutate(response = factor(response, levels = c("Poor", "Fair", "Good", "Very good", "Excellent")))
 
+#In 2002, which states were observed at 7 locations?
+brfss_smart2010 %>%
+  filter(year == 2002) %>%
+  group_by(locationabbr) %>%
+  count(locationabbr) %>%
+  filter(n >= 7)
+
+#Spaghetti plot
+spaghetti_df<- brfss_smart2010 %>%
+  group_by(locationabbr, year) %>%
+  count(locationabbr)
+
+(ggplot(spaghetti_df, aes(x = year, y = n, color = locationabbr))
+  +geom_line())
+
+#Table
+table_02_06_10 <- brfss_smart2010 %>%
+  filter(year %in% c(2002,2006,2010) & locationabbr == "NY" & response == "Excellent") %>%
+  group_by(locationabbr, year) %>%
+  summarise(mean(data_value), sd(data_value))
+  
+kable(table_02_06_10)
+
+#Each year, state, response category, average proportion
+brfss_smart2010 %>%
+  group_by(locationabbr, year, response) %>%
+  summarise(mean(data_value))
+
+five_panel_plot_df <- brfss_smart2010 %>%
+  group_by(locationabbr, year, response) %>%
+  summarise(mean(data_value))
+  
+
+
+(ggplot(five_panel_plot_df[which(five_panel_plot_df$response == "Poor"),], aes(x = year, y = `mean(data_value)`, color = locationabbr))
+  +geom_point()
+  +geom_smooth(se = FALSE))
+(ggplot(five_panel_plot_df[which(five_panel_plot_df$response == "Fair"),], aes(x = year, y = `mean(data_value)`, color = locationabbr))
+  +geom_point()
+  +geom_smooth(se = FALSE))
+(ggplot(five_panel_plot_df[which(five_panel_plot_df$response == "Good"),], aes(x = year, y = `mean(data_value)`, color = locationabbr))
+  +geom_point()
+  +geom_smooth(se = FALSE))
+(ggplot(five_panel_plot_df[which(five_panel_plot_df$response == "Very good"),], aes(x = year, y = `mean(data_value)`, color = locationabbr))
+  +geom_point()
+  +geom_smooth(se = FALSE))
+(ggplot(five_panel_plot_df[which(five_panel_plot_df$response == "Excellent"),], aes(x = year, y = `mean(data_value)`, color = locationabbr))
+  +geom_point()
+  +geom_smooth(se = FALSE))
 ```
 
 
@@ -45,6 +95,38 @@ How many aisles are there, and which aisles are the most items ordered from?
 Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
 Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
 Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+```{r Problem 2}
+data("instacart")
+head(instacart)
+length(unique(instacart$order_id))
+length(unique(instacart$user_id))
+
+#How many aisles are there, and which aisles are the most items ordered from?
+length(unique(instacart$aisle))
+length(unique(instacart$aisle_id))
+
+most_items_ordered <- instacart %>%
+  group_by(aisle) %>%
+  count(aisle) %>%
+  arrange(desc(n))
+head(most_items_ordered)  
+
+#Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
+most_items_ordered2 <- instacart %>%
+  group_by(aisle_id) %>%
+  count(aisle_id) %>%
+  arrange(aisle_id)
+ggplot(most_items_ordered2, aes(x = aisle_id, y = n)) + geom_bar(stat="identity")
+
+#Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
+most_popular <- instacart %>%
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>%
+  group_by(aisle) %>%
+  count(product_name) %>%
+  arrange(desc(n))
+
+```
 
 
 Problem 3
