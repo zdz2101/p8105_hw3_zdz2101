@@ -6,11 +6,14 @@ output: github_document
 ---
 
 #####Load libraries
-```{r}
+```{r, message = FALSE, warning = FALSE}
 library(tidyverse)
 library(ggplot2)
 library(p8105.datasets) 
 library(knitr)
+library(lubridate)
+library(hexbin)
+library(ggpubr)
 ```
 #Problem 1
 This problem uses the BRFSS data. DO NOT include this dataset in your local data directory; instead, load the data from the  p8105.datasets package.
@@ -173,6 +176,60 @@ Make a two-panel plot showing the average temperature in January and in July in 
 Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
 ```{r problem 3}
 data("ny_noaa")
-ny_noaa
+ny_noaa <- ny_noaa %>%
+  mutate(prcp = prcp/10,
+         snow = snow/10,
+         snwd = snwd/10,
+         tmax = as.numeric(tmax)/10,
+         tmin = as.numeric(tmin)/10) 
 
+#summary(ny_noaa$date) -- everyday 1/1/81 - 12/31/10
+```
+
+The ny_noaa dataset is quite large, `r nrow(ny_noaa)` observations with `r ncol(ny_noaa)` variables. A little breakdown of each variable:
+- There are `r length(unique(ny_noaa$id))` unique different id's in this dataset.
+- Dates range for a 30 year span from January 1st, 1981 to December 31st, 2010. 
+```{r}
+kable(t(apply(ny_noaa[,3:7], 2, summary)))
+```
+It seems NAs are quite an issue acrosos most of the numerical variables but especially so in the temperature, where almost half of the values are NA's. 
+
+```{r problem 3 cleaning}
+ny_noaa <- ny_noaa %>%
+  mutate(., year = year(date),
+         month = month(date),
+         day = weekdays(date))
+
+ny_noaa %>%
+  group_by(snow) %>%
+  count(snow)
+```
+
+The most observed snowfall value is 0 which is unsurprising, considering it does not snow for *most* of the year. 
+
+```{r Tmax_mean plot}
+ny_noaa %>%
+  filter(month %in% c(1,7)) %>%
+  group_by(year, month, id) %>%
+  summarize(mean_max_temp = mean(tmax)) %>%
+  ggplot(., aes(x = year, y = mean_max_temp, color = id)) + 
+  geom_line() +
+  theme(legend.position="none") +
+  facet_grid(~month)
+```
+
+I would not say there is any sort of particular interpretable structure beyond the fact that you can see that temperature varies within stations on a per year basis and that on average the weather stays within a ~20 degrees Celsius window throughout the years for borth January and July as a whole. There does seem to be one outlier though from one stayion in the late 80s in July that dipped much lower than usual. 
+
+```{r 2 panel snow temp}
+
+temp_plot <- ggplot(ny_noaa, aes(x = tmin, y = tmax)) + geom_hex()
+
+snow_plot <- ny_noaa %>%
+  filter(snow > 0 & snow < 100) %>%
+  mutate(year = as.factor(year)) %>%
+  ggplot(., aes(x = year, y = snow)) + 
+  geom_boxplot() + 
+  coord_flip()
+
+ggarrange(temp_plot, snow_plot, ncol = 2, nrow = 1)
 ```
