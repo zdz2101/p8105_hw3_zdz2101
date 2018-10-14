@@ -123,15 +123,17 @@ The top 6 aisles most items ordered from are: `r head(most_items_ordered)$aisle`
 ####Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
 ```{r Problem 2.2}
 instacart %>%
-  group_by(department, aisle_id) %>%
-  count(aisle_id) %>%
-  arrange(aisle_id) %>%
-  ggplot(., aes(x = aisle_id, y = n, color = department, fill = department)) +
+  group_by(department, aisle) %>%
+  count(aisle) %>%
+  arrange(department, aisle) %>%
+  ggplot(., aes(x = aisle, y = n, fill = department)) +
   geom_bar(stat="identity") +
-  ylab("Number of items sold")
+  ylab("Number of items sold") + 
+  coord_flip() +
+  facet_wrap(~department, nrow = 7, scale = "free")
 ```
 
-Aisles are ordered numerically and colored by the department they belong in. Just how we saw earlier with the fresh vegetables, fresh fruits, etc from the previous question, it is clear they belong in the "produce" department.
+I faceted the plot by department (colored that way as well for viewing pleasure). It is important to note scale: certain departments like produce get as high as 150000 products in an aisle sold meanwhile the bulk department doesn't exceed 1000 for any particular aisle. I'm surprised the baby formula aisle sells items at such a more exponentially higher rate than its resepective similar aisles in the babies department. It might be worth to one day plot by proportion, such that each department's aisles proportions add up to 1 in each department (see who is biggest contributor to each department). 
 
 ####Make a table showing the most popular item from aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
 ```{r Problem 2.3}
