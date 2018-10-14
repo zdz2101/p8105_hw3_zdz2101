@@ -24,20 +24,19 @@ format the data to use appropriate variable names;
 focus on the “Overall Health” topic
 include only responses from “Excellent” to “Poor”
 organize responses as a factor taking levels from “Excellent” to “Poor”
-Using this dataset, do or answer the following (commenting on the results of each):
 
-In 2002, which states were observed at 7 locations?
-Make a “spaghetti plot” that shows the number of observations in each state from 2002 to 2010.
-Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.
-For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.
-```{r Problem 1.1}
+```{r Problem 1 Data cleaning}
 data("brfss_smart2010")
 brfss_smart2010 <- brfss_smart2010 %>%
   janitor::clean_names() %>%
   filter(topic == "Overall Health") %>%
   mutate(response = factor(response, levels = c("Poor", "Fair", "Good", "Very good", "Excellent")))
+```
 
-#In 2002, which states were observed at 7 locations?
+####Using this dataset, do or answer the following (commenting on the results of each):
+####In 2002, which states were observed at 7 locations?
+
+```{r Problem 1.1}
 locations_2002 <- brfss_smart2010 %>%
   filter(year == 2002) %>%
   group_by(locationabbr, locationdesc) %>%
@@ -45,67 +44,71 @@ locations_2002 <- brfss_smart2010 %>%
   group_by(locationabbr) %>%
   count(locationabbr) %>%
   filter(n == 7)
+locations_2002
 ```
 
 There are 3 states that were observed at 7 locations: Connecticut, Florida, North Carolina.
 
+####Make a “spaghetti plot” that shows the number of observations in each state from 2002 to 2010.
 ```{r Problem 1.2}
-#Spaghetti plot
-spaghetti_plot<- brfss_smart2010 %>%
+brfss_smart2010 %>%
   group_by(locationabbr, locationdesc, year) %>%
   distinct(locationdesc) %>%
   group_by(locationabbr, year) %>%
   count(locationabbr) %>%
-  ggplot(.,aes(x = year, y = n, color = locationabbr)) + geom_line()
-
-spaghetti_plot
+  ggplot(.,aes(x = year, y = n, color = locationabbr)) +
+  geom_line() +
+  ylab("Number of observed locations")
 ```
 
+There seems to be this wild outlier-like blip in 2007 by Florida that happens again in 2010. Otherwise, it looks like majority of the states stayed pretty stable throughout the years.
+
+####Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.
 ```{r Problem 1.3}
-#Table
 table_02_06_10 <- brfss_smart2010 %>%
   filter(year %in% c(2002,2006,2010) & locationabbr == "NY" & response == "Excellent") %>%
   group_by(locationabbr, year) %>%
-  summarise(mean(data_value), sd(data_value))
+  summarise(excellent_mean = mean(data_value),
+            excenllent_sd = sd(data_value))
   
 kable(table_02_06_10)
 ```
 
+The mean proportion of excellent responses in NY state stays somewhere between and 22.53% and 24.04% . There seems to be a trend where the standard deviation seems to decrease over time. 
+
+#### For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.
 ```{r Problem 1.4}
-#Each year, state, response category, average proportion
-five_panel_plot <- brfss_smart2010 %>%
+brfss_smart2010 %>%
   group_by(locationabbr, year, response) %>%
-  summarise(mean(data_value)) %>%
-  ggplot(., aes(x = year, y = `mean(data_value)`, color = locationabbr)) + 
+  summarise(avg_prop_response = mean(data_value)) %>%
+  ggplot(., aes(x = year, y = avg_prop_response, color = locationabbr)) + 
   geom_line() +
   facet_grid(~response) +
   theme(axis.text.x = element_text(angle = 45),
         legend.position = "bottom") + 
   guides(colour = guide_legend(nrow = 3))
-
-five_panel_plot
 ```
 
+It seems the average proportion in each response category stays pretty stable throughout the years in *most* states. With so many states it gets a little hard to interpret which state corresponds to which lines in this 5 paneled plot. But just by eyeballing it, poor response is generally somewhere between 2%-10%, fair response 5%-20%, good response 25%-35%, very good 25%-45%, and excellent response 10%-30%, respectively. 
 
 #Problem 2
 This problem uses the Instacart data. DO NOT include this dataset in your local data directory; instead, load the data from the  p8105.datasets package (it’s called instacart).
 
 The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. Then, do or answer the following (commenting on the results of each):
 
-How many aisles are there, and which aisles are the most items ordered from?
-Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
-Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
-Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
-
-```{r Problem 2.1}
+```{r Problem 2 descriptive info}
 data("instacart")
-head(instacart)
-length(unique(instacart$order_id))
-length(unique(instacart$user_id))
+num_unique_orders <- length(unique(instacart$order_id))
+num_unique_products <- length(unique(instacart$product_name))
+num_unique_departments <- length(unique(instacart$department))
+```
 
-#How many aisles are there, and which aisles are the most items ordered from?
-length(unique(instacart$aisle))
-length(unique(instacart$aisle_id))
+The instacart dataset has `r nrow(instacart)` observations/rows and `r ncol(instacart)` variables/columns. There were `r num_unique_orders` unique orders made. There are `r num_unique_products` unique products offered from `r num_unique_departments` unique departments.
+
+
+#####How many aisles are there, and which aisles are the most items ordered from?
+```{r Problem 2.1}
+num_unique_aisles <- length(unique(instacart$aisle))
 
 most_items_ordered <- instacart %>%
   group_by(aisle) %>%
@@ -114,23 +117,24 @@ most_items_ordered <- instacart %>%
 head(most_items_ordered)  
 ```
 
-There are `r length(unique(instacart$aisle))` aisles.
-The top 6 aisles most items ordered from are `r head(most_items_ordered)$aisle`.   
+There are `r num_unique_aisles` aisles.
+The top 6 aisles most items ordered from are: `r head(most_items_ordered)$aisle`. The aisles in which most items ordered seems about right, you would expect to see these "aisles" in grocery stores and supermarkets to take up the most square footage/real estate. 
 
+####Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
 ```{r Problem 2.2}
-#Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
 instacart %>%
-  group_by(aisle_id) %>%
+  group_by(department, aisle_id) %>%
   count(aisle_id) %>%
   arrange(aisle_id) %>%
-  ggplot(., aes(x = aisle_id, y = n)) +
-  geom_bar(stat="identity")
+  ggplot(., aes(x = aisle_id, y = n, color = department, fill = department)) +
+  geom_bar(stat="identity") +
+  ylab("Number of items sold")
 ```
 
-Aisles are ordered numerically.
+Aisles are ordered numerically and colored by the department they belong in. Just how we saw earlier with the fresh vegetables, fresh fruits, etc from the previous question, it is clear they belong in the "produce" department.
 
+####Make a table showing the most popular item from aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
 ```{r Problem 2.3}
-#Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
 most_popular <- instacart %>%
   filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>%
   group_by(aisle) %>%
@@ -152,8 +156,10 @@ most_popular_items <- tibble(aisle=names(product_key),
 kable(most_popular_items)
 ```
 
+Among baking ingredients, light brown sugar is the most popular item sold which isn't all too surprising. When you thinking "baking" you think sweets and pastries (or at least I do) and sugar is near-essential ingredient in whatever you make. It is interesting to note how much more, practically >300x more so, that the baby spinach is ordered than the snack sticks & rice recipe dog treats. I suppose this is good information to know how much "space" to dedicate to items/aisles.
+
+####Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
 ```{r Problem 2.4}
-#Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
 desired_products <- instacart %>%
   filter(product_name %in% c("Pink Lady Apples","Coffee Ice Cream")) %>%
   select(order_hour_of_day, order_dow, product_name) %>%
@@ -163,8 +169,12 @@ desired_products <- instacart %>%
 
 names(desired_products) <- c("Product", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
 kable(desired_products)
+
+desired_products_rounded <- round(desired_products[,-1])
+kable(cbind(desired_products[,1], desired_products_rounded))
 ```
 
+Important to note that in the first table this is in terms of a "mean" hour of the day and in military/24 hour time. For example, a mean time of 13.5 would be 1:30pm. In terms of decimals, every 0.25 is equivalent to 15 minutes. However, our original data was in integer data/whole hour time so I thought it would be worth it to see the resulting table in rounded form (traditional rounding, >0.5 rounds up, round down otherwise). Coffee Ice cream generally sells in the afternoon, a little earlier so on Saturdays interestingly enough. Pink Lady apples are also generally sold mid-day, from 11-14 hours (11am - 2pm). 
 
 #Problem 3
 This problem uses the NY NOAA data. DO NOT include this dataset in your local data directory; instead, load the data from the  p8105.datasets package (it’s called ny_noaa).
@@ -172,8 +182,6 @@ This problem uses the NY NOAA data. DO NOT include this dataset in your local da
 The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and indicating the extent to which missing data is an issue. Then, do or answer the following (commenting on the results of each):
 
 Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
-Make a two-panel plot showing the average temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
-Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
 ```{r problem 3}
 data("ny_noaa")
 ny_noaa <- ny_noaa %>%
@@ -181,7 +189,10 @@ ny_noaa <- ny_noaa %>%
          snow = snow/10,
          snwd = snwd/10,
          tmax = as.numeric(tmax)/10,
-         tmin = as.numeric(tmin)/10) 
+         tmin = as.numeric(tmin)/10,
+         year = year(date),
+         month = month(date),
+         day = weekdays(date))
 
 #summary(ny_noaa$date) -- everyday 1/1/81 - 12/31/10
 ```
@@ -189,17 +200,14 @@ ny_noaa <- ny_noaa %>%
 The ny_noaa dataset is quite large, `r nrow(ny_noaa)` observations with `r ncol(ny_noaa)` variables. A little breakdown of each variable:
 - There are `r length(unique(ny_noaa$id))` unique different id's in this dataset.
 - Dates range for a 30 year span from January 1st, 1981 to December 31st, 2010. 
+
 ```{r}
 kable(t(apply(ny_noaa[,3:7], 2, summary)))
 ```
-It seems NAs are quite an issue acrosos most of the numerical variables but especially so in the temperature, where almost half of the values are NA's. 
 
-```{r problem 3 cleaning}
-ny_noaa <- ny_noaa %>%
-  mutate(., year = year(date),
-         month = month(date),
-         day = weekdays(date))
+It seems NAs are quite an issue across most of the numerical variables but especially so in the temperature columns, where almost half of the values are NA's. 
 
+```{r problem 3 snow}
 ny_noaa %>%
   group_by(snow) %>%
   count(snow)
@@ -207,6 +215,7 @@ ny_noaa %>%
 
 The most observed snowfall value is 0 which is unsurprising, considering it does not snow for *most* of the year. 
 
+####Make a two-panel plot showing the average temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
 ```{r Tmax_mean plot}
 ny_noaa %>%
   filter(month %in% c(1,7)) %>%
@@ -220,16 +229,25 @@ ny_noaa %>%
 
 I would not say there is any sort of particular interpretable structure beyond the fact that you can see that temperature varies within stations on a per year basis and that on average the weather stays within a ~20 degrees Celsius window throughout the years for borth January and July as a whole. There does seem to be one outlier though from one stayion in the late 80s in July that dipped much lower than usual. 
 
-```{r 2 panel snow temp}
 
-temp_plot <- ggplot(ny_noaa, aes(x = tmin, y = tmax)) + geom_hex()
+####Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
+```{r 2 panel snow temp}
+funky_temps <- ny_noaa[which(ny_noaa$tmin > ny_noaa$tmax),]
+
+temp_plot <- ggplot(ny_noaa, aes(x = tmin, y = tmax)) + 
+  geom_hex() +
+  xlim(-60, 60) +
+  ylim(-60, 60)
+  geom_abline(intercept = 0, slope = 1, color = "red") 
 
 snow_plot <- ny_noaa %>%
   filter(snow > 0 & snow < 100) %>%
   mutate(year = as.factor(year)) %>%
-  ggplot(., aes(x = year, y = snow)) + 
+  ggplot(., aes(x = year, y = snow)) +
   geom_boxplot() + 
   coord_flip()
 
 ggarrange(temp_plot, snow_plot, ncol = 2, nrow = 1)
 ```
+
+For the first panel, the tmax vs tmin plot, there were over a million values to be plotted so it was better to use a density-based plot. It is interesting to see that there are a decent amount of values where tmin seems to be great than tmax (anything right of the y = x line). This does not make much sense, in fact there are `r nrow(funky_temps)` observations where this is seen. For the sefcond panel, we see that there is a lot of outliers in in all years but in general the IQR (along with the median) stays pretty consistent throughout the years. 
